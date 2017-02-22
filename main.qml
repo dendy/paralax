@@ -24,28 +24,16 @@ Window {
 				Layout.fillWidth: true
 				Layout.fillHeight: true
 
-				Item {
+				Component {
 					id: point
-
-					Image {
-						anchors.centerIn: parent
-						width: 40
-						height: width
-						source: "star.png"
+					Item {
+						Image {
+							anchors.centerIn: parent
+							width: 40
+							height: width
+							source: "star.png"
+						}
 					}
-				}
-
-				MouseArea {
-					anchors.fill: parent
-
-					function add(mouse) {
-						point.x = mouse.x;
-						point.y = mouse.y;
-						colorFbo.scheduleUpdate();
-					}
-
-					onPressed: add(mouse);
-					onPositionChanged: add(mouse);
 				}
 			}
 
@@ -58,7 +46,7 @@ Window {
 				sourceItem: ShaderEffect {
 					width: colorItem.width
 					height: colorItem.height
-					property var src: ShaderEffectSource { sourceItem: colorItem }
+					property var src: ShaderEffectSource { sourceItem: colorItem; hideSource: true }
 					property var base: colorFbo
 					fragmentShader: "
 						varying vec2 qt_TexCoord0;
@@ -72,6 +60,38 @@ Window {
 				live: false
 				recursive: true
 				textureSize: Qt.size(256, 256)
+
+				MouseArea {
+					anchors.fill: parent
+
+					property var points: []
+
+					function addb(x, y) {
+						var p = point.createObject(colorItem);
+						p.x = Qt.binding(function() {return colorItem.width*x});
+						p.y = Qt.binding(function() {return colorItem.height*y});
+						points.push(p);
+					}
+
+					function paint(mouse) {
+						for (var p in points) points[p].destroy();
+						points = [];
+						points.push(point.createObject(colorItem, {x: mouse.x, y: mouse.y}));
+						colorFbo.scheduleUpdate();
+					}
+
+					onPressed: paint(mouse);
+					onPositionChanged: paint(mouse);
+
+					Component.onCompleted: {
+						addb(0.2, 0.3);
+						addb(0.6, 0.7);
+						addb(0.3, 0.4);
+						addb(0.8, 0.3);
+						addb(0.9, 0.8);
+						colorFbo.scheduleUpdate();
+					}
+				}
 			}
 		}
 
