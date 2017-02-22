@@ -100,14 +100,14 @@ Window {
 				property real angle: 0
 				RotationAnimation on angle {
 					from: 0; to: 360
-					duration: 2000
+					duration: 5000
 					loops: Animation.Infinite
 					running: true
 				}
 				property real radangle: angle * Math.PI / 180.0
 
 				property var src: colorFbo
-				property real ascend: 2.0
+				property real ascend: 5.0
 				property point pos: Qt.point(0.5 + Math.sin(radangle) * 0.3, 0.5 + Math.cos(radangle) * 0.3)
 				property int samples: 50
 				property point fragSize: Qt.point(1.0/colorFbo.textureSize.width, 1.0/colorFbo.textureSize.height)
