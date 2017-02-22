@@ -10,6 +10,24 @@ Window {
 	width: 600
 	height: 600
 
+	Component {
+		id: point
+		Item {
+			Image {
+				anchors.centerIn: parent
+				width: 40
+				height: width
+				source: "star.png"
+			}
+		}
+	}
+
+	Item {
+		id: colorItem
+		width: 512
+		height: 512
+	}
+
 	RowLayout {
 		anchors.fill: parent
 		anchors.margins: 10
@@ -19,22 +37,8 @@ Window {
 			Layout.fillHeight: true
 
 			Item {
-				id: colorItem
-
 				Layout.fillWidth: true
 				Layout.fillHeight: true
-
-				Component {
-					id: point
-					Item {
-						Image {
-							anchors.centerIn: parent
-							width: 40
-							height: width
-							source: "star.png"
-						}
-					}
-				}
 			}
 
 			ShaderEffectSource {
@@ -76,7 +80,9 @@ Window {
 					function paint(mouse) {
 						for (var p in points) points[p].destroy();
 						points = [];
-						points.push(point.createObject(colorItem, {x: mouse.x, y: mouse.y}));
+						points.push(point.createObject(colorItem, {
+							x: mouse.x*colorItem.width/width,
+							y: mouse.y*colorItem.height/height}));
 						colorFbo.scheduleUpdate();
 					}
 
