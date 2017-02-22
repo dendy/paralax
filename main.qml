@@ -37,11 +37,15 @@ Window {
 
 				MouseArea {
 					anchors.fill: parent
-					onPositionChanged: {
+
+					function add(mouse) {
 						point.x = mouse.x;
 						point.y = mouse.y;
 						colorFbo.scheduleUpdate();
 					}
+
+					onPressed: add(mouse);
+					onPositionChanged: add(mouse);
 				}
 			}
 
