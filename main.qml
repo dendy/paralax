@@ -18,6 +18,7 @@ Window {
 				width: 40
 				height: width
 				source: "star.png"
+				opacity: 0.2
 			}
 		}
 	}
@@ -63,7 +64,7 @@ Window {
 				}
 				live: false
 				recursive: true
-				textureSize: Qt.size(256, 256)
+				textureSize: Qt.size(512, 512)
 
 				MouseArea {
 					anchors.fill: parent
@@ -112,9 +113,14 @@ Window {
 				ColumnLayout {
 					anchors.fill: parent
 
-					Button {
-						text: "Update"
-						onClicked: colorFbo.scheduleUpdate();
+					Row {
+						Text { text: 'Softness:' }
+						Slider { id: softnessSlider }
+					}
+
+					Row {
+						Text { text: 'Light ascend:' }
+						Slider { id: ascendSlider; minimumValue: 1.1; maximumValue: 10; value: 5 }
 					}
 
 					Item {
@@ -137,10 +143,11 @@ Window {
 				property real radangle: angle * Math.PI / 180.0
 
 				property var src: colorFbo
-				property real ascend: 5.0
+				property real ascend: ascendSlider.value
 				property point pos: Qt.point(0.5 + Math.sin(radangle) * 0.3, 0.5 + Math.cos(radangle) * 0.3)
 				property int samples: 50
 				property point fragSize: Qt.point(1.0/colorFbo.textureSize.width, 1.0/colorFbo.textureSize.height)
+				property real softness: softnessSlider.value
 
 				fragmentShader: "
 					varying vec2 qt_TexCoord0;
@@ -149,22 +156,27 @@ Window {
 					uniform vec2 pos;
 					uniform int samples;
 					uniform vec2 fragSize;
+					uniform float softness;
 
 					void main() {
 						mediump vec2 dir = normalize(pos - qt_TexCoord0);
 						mediump float fullDist = distance(pos, qt_TexCoord0);
 						mediump float dist = fullDist / ascend;
-						mediump float shadow = smoothstep(0.1, 0.7, fullDist);
-						mediump float rangeStep = fragSize.x * 0.5;
-						for (float range = rangeStep; range < dist; range += rangeStep) {
-							mediump float step = range / dist;
-							lowp float a = texture2D(src, qt_TexCoord0 + dist * dir * step).a;
-							shadow = max(shadow, a / step);
-							if (shadow >= 1.0) break;
+						mediump float shadow = smoothstep(0.3, 0.7, fullDist);
+						if (shadow != 1.0) {
+							mediump float s = 0.0;
+							mediump float rangeStep = fragSize.x * 0.5;
+							for (float range = rangeStep; range < dist; range += rangeStep) {
+								mediump float step = range / dist;
+								lowp float a = texture2D(src, qt_TexCoord0 + dist * dir * step).a;
+								s = max(s, a / step);
+								if (s >= 1.0) break;
+							}
+							shadow = max(shadow, smoothstep(softness, 1.0, s));
 						}
-						mediump float alpha = smoothstep(0.8, 1.0, shadow);
+						mediump float alpha = shadow;
 						lowp vec4 c = texture2D(src, qt_TexCoord0);
-						gl_FragColor = mix(c, vec4(vec3(0.0), 1.0), alpha * 0.2);
+						gl_FragColor = mix(c, vec4(vec3(0.0), 1.0), alpha * 0.4);
 					}
 				"
 			}
