@@ -129,6 +129,7 @@ Window {
 							mediump float step = range / dist;
 							lowp float a = texture2D(src, qt_TexCoord0 + dist * dir * step).a;
 							shadow = max(shadow, a / step);
+							if (shadow >= 1.0) break;
 						}
 						mediump float alpha = smoothstep(0.8, 1.0, shadow);
 						lowp vec4 c = texture2D(src, qt_TexCoord0);
