@@ -122,8 +122,9 @@ Window {
 
 					void main() {
 						mediump vec2 dir = normalize(pos - qt_TexCoord0);
-						mediump float dist = distance(pos, qt_TexCoord0) / ascend;
-						mediump float shadow = 0.0;
+						mediump float fullDist = distance(pos, qt_TexCoord0);
+						mediump float dist = fullDist / ascend;
+						mediump float shadow = smoothstep(0.1, 0.7, fullDist);
 						mediump float rangeStep = fragSize.x * 0.5;
 						for (float range = rangeStep; range < dist; range += rangeStep) {
 							mediump float step = range / dist;
