@@ -44,9 +44,7 @@ Window {
 		}
 		property real radangle: angle * Math.PI / 180.0
 
-		pos: animateLight.checked ?
-				Qt.point(0.5 + Math.sin(radangle) * 0.3, 0.5 + Math.cos(radangle) * 0.3) :
-				Qt.point(lightArea.mouseX/lightArea.width, lightArea.mouseY/lightArea.height)
+		pos: Qt.point(0.5 + Math.sin(radangle) * 0.3, 0.5 + Math.cos(radangle) * 0.3)
 	}
 
 	Light {
@@ -280,6 +278,14 @@ Window {
 					MouseArea {
 						id: lightArea
 						anchors.fill: parent
+						enabled: !animateLight.checked
+
+						function setPos(mouse) {
+							lightView.currentItem.customPos = Qt.point(mouseX/width, mouseY/height);
+						}
+
+						onPressed: setPos(mouse);
+						onPositionChanged: setPos(mouse);
 					}
 				}
 			}
@@ -304,6 +310,49 @@ Window {
 
 			Item {
 				Layout.fillHeight: true
+			}
+
+			ListView {
+				id: lightView
+				Layout.preferredHeight: 55
+				Layout.fillWidth: true
+				model: ListModel {}
+				spacing: 10
+				orientation: ListView.Horizontal
+
+				delegate: Item {
+					id: delegate
+
+					property point customPos
+
+					Binding {
+						target: model.light
+						property: 'pos'
+						when: !animateLight.checked
+						value: delegate.customPos
+					}
+
+					width: 50
+					height: 50
+
+					Rectangle {
+						anchors.fill: parent
+						color: model.color
+						border.color: 'black'
+						border.width: delegate.ListView.isCurrentItem ? 5 : 0
+					}
+
+					MouseArea {
+						anchors.fill: parent
+						onPressed: delegate.ListView.view.currentIndex = model.index;
+					}
+				}
+
+				Component.onCompleted: {
+					model.append({color: 'red', light: redLight});
+					model.append({color: 'green', light: greenLight});
+					model.append({color: 'blue', light: blueLight});
+				}
 			}
 
 			Row {
