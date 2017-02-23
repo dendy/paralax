@@ -133,10 +133,10 @@ Window {
 
 					Component.onCompleted: {
 						addb(0.2, 0.3, 'star', 1.5);
-						addb(0.6, 0.7, 'star', 3.0);
+						addb(0.6, 0.7, 'gear', 3.0);
 						addb(0.3, 0.4, 'star', 2.5);
 						addb(0.8, 0.3, 'cloud', 4.0);
-						addb(0.9, 0.8, 'cloud', 2.5);
+						addb(0.9, 0.8, 'leaf', 2.5);
 						colorFbo.scheduleUpdate();
 					}
 				}
@@ -178,12 +178,14 @@ Window {
 
 					ListView {
 						id: iconView
-						Layout.preferredHeight: 80
+						Layout.preferredHeight: 55
 						Layout.fillWidth: true
 						orientation: ListView.Horizontal
 						model: ListModel {
 							ListElement { name: "star" }
 							ListElement { name: "cloud" }
+							ListElement { name: "gear" }
+							ListElement { name: "leaf" }
 							ListElement { clear: true }
 						}
 						delegate: Rectangle {
@@ -195,7 +197,7 @@ Window {
 							border.width: 2
 
 							Image {
-								anchors { fill: parent; margins: 10 }
+								anchors { fill: parent; margins: 5 }
 								source: model.name ? model.name + ".png" : ''
 							}
 
