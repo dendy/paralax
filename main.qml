@@ -37,9 +37,31 @@ Window {
 			Layout.fillWidth: true
 			Layout.fillHeight: true
 
-			Item {
+			ShaderEffectSource {
+				id: normalFbo
+
 				Layout.fillWidth: true
 				Layout.fillHeight: true
+
+				sourceItem: ShaderEffect {
+					width: colorFbo.width
+					height: colorFbo.height
+					property var src: colorFbo
+					property point fragSize: Qt.point(1.0/colorFbo.textureSize.width, 1.0/colorFbo.textureSize.height)
+					fragmentShader: "
+						varying vec2 qt_TexCoord0;
+						uniform sampler2D src;
+						uniform vec2 fragSize;
+						void main() {
+							mediump float x1 = texture2D(src, vec2(qt_TexCoord0.x - fragSize.x, qt_TexCoord0.y)).a;
+							mediump float x2 = texture2D(src, vec2(qt_TexCoord0.x + fragSize.x, qt_TexCoord0.y)).a;
+							mediump float y1 = texture2D(src, vec2(qt_TexCoord0.x, qt_TexCoord0.y - fragSize.y)).a;
+							mediump float y2 = texture2D(src, vec2(qt_TexCoord0.x, qt_TexCoord0.y + fragSize.y)).a;
+							mediump vec2 n = vec2(x2 - x1, y2 - y1) * 0.5 + vec2(0.5);
+							gl_FragColor = vec4(n.x, n.y, 1.0, 1.0);
+						}
+					"
+				}
 			}
 
 			ShaderEffectSource {
