@@ -10,6 +10,8 @@ Window {
 	width: 800
 	height: 600
 
+	property size fboSize: Qt.size(1024, 1024);
+
 	property LightRenderer light: LightRenderer {
 		id: renderer
 
@@ -19,6 +21,7 @@ Window {
 		specular: specularCheckBox.checked
 		ascend: ascendSlider.value
 		heightMap: colorFbo
+		fboSize: self.fboSize
 
 		Component.onCompleted: {
 			model.append({light: redLight});
@@ -143,7 +146,7 @@ Window {
 				}
 				live: false
 				recursive: true
-				textureSize: Qt.size(512, 512)
+				textureSize: self.fboSize
 
 				MouseArea {
 					id: paintArea
