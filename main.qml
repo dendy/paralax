@@ -57,7 +57,7 @@ Window {
 							mediump float x2 = texture2D(src, vec2(qt_TexCoord0.x + fragSize.x, qt_TexCoord0.y)).a;
 							mediump float y1 = texture2D(src, vec2(qt_TexCoord0.x, qt_TexCoord0.y - fragSize.y)).a;
 							mediump float y2 = texture2D(src, vec2(qt_TexCoord0.x, qt_TexCoord0.y + fragSize.y)).a;
-							mediump vec2 n = vec2(x2 - x1, y2 - y1) * 0.5 + vec2(0.5);
+							mediump vec2 n = -vec2(x2 - x1, y2 - y1) * 0.5 + vec2(0.5);
 							gl_FragColor = vec4(n.x, n.y, 1.0, 1.0);
 						}
 					"
@@ -142,8 +142,11 @@ Window {
 
 					Row {
 						Text { text: 'Light ascend:' }
-						Slider { id: ascendSlider; minimumValue: 1.1; maximumValue: 10; value: 5 }
+						Slider { id: ascendSlider; minimumValue: 1.1; maximumValue: 10; value: 3 }
 					}
+
+					CheckBox { id: specular; text: "Specular"; checked: true }
+					CheckBox { id: animateLight; text: "Animate light"; checked: true }
 
 					Item {
 						Layout.fillHeight: true
@@ -160,47 +163,77 @@ Window {
 					from: 0; to: 360
 					duration: 5000
 					loops: Animation.Infinite
-					running: true
+					running: animateLight.checked
 				}
 				property real radangle: angle * Math.PI / 180.0
 
 				property var src: colorFbo
+				property var norm: normalFbo
 				property real ascend: ascendSlider.value
-				property point pos: Qt.point(0.5 + Math.sin(radangle) * 0.3, 0.5 + Math.cos(radangle) * 0.3)
+				property point pos: animateLight.checked ?
+						Qt.point(0.5 + Math.sin(radangle) * 0.3, 0.5 + Math.cos(radangle) * 0.3) :
+						Qt.point(lightArea.mouseX/lightArea.width, lightArea.mouseY/lightArea.height)
 				property int samples: 50
 				property point fragSize: Qt.point(1.0/colorFbo.textureSize.width, 1.0/colorFbo.textureSize.height)
 				property real softness: softnessSlider.value
+				property bool specular: specular.checked
 
 				fragmentShader: "
 					varying vec2 qt_TexCoord0;
 					uniform sampler2D src;
+					uniform sampler2D norm;
 					uniform float ascend;
 					uniform vec2 pos;
 					uniform int samples;
 					uniform vec2 fragSize;
 					uniform float softness;
+					uniform bool specular;
 
 					void main() {
+						lowp vec4 c = texture2D(src, qt_TexCoord0);
+
 						mediump vec2 dir = normalize(pos - qt_TexCoord0);
 						mediump float fullDist = distance(pos, qt_TexCoord0);
-						mediump float dist = fullDist / ascend;
+
+						mediump float localAscend = ascend - c.a;
+						mediump float localHeight = 1.0 - c.a;
+						mediump float dist = fullDist / localAscend;
+
 						mediump float shadow = smoothstep(0.3, 0.7, fullDist);
+
 						if (shadow != 1.0) {
-							mediump float s = 0.0;
+							mediump float s = c.a;
 							mediump float rangeStep = fragSize.x * 0.5;
 							for (float range = rangeStep; range < dist; range += rangeStep) {
 								mediump float step = range / dist;
-								lowp float a = texture2D(src, qt_TexCoord0 + dist * dir * step).a;
-								s = max(s, a / step);
+								lowp float a = texture2D(src, qt_TexCoord0 + dist * dir * step).a - c.a;
+								s = max(s, c.a + a*localHeight/step);
 								if (s >= 1.0) break;
 							}
-							shadow = max(shadow, smoothstep(softness, 1.0, s));
+							shadow = max(shadow, smoothstep(softness, 1.0, s - c.a));
 						}
+
 						mediump float alpha = shadow;
-						lowp vec4 c = texture2D(src, qt_TexCoord0);
-						gl_FragColor = mix(c, vec4(vec3(0.0), 1.0), alpha * 0.4);
+						gl_FragColor = mix(vec4(0.8, 0.6, 0.4, 1.0), vec4(vec3(0.0), 1.0), alpha * 0.4);
+
+						if (specular) {
+							mediump vec3 light = normalize(vec3(qt_TexCoord0, c.a) - vec3(pos, ascend));
+							mediump vec2 sn = (texture2D(norm, qt_TexCoord0).rg - vec2(0.5)) * 2.0;
+							mediump vec3 n = vec3(sn, sqrt(1.0 - pow(sn.x, 2.0) - pow(sn.y, 2.0)));
+							n = normalize(vec3(sn, 1.0));
+							mediump vec3 ref = reflect(light, n);
+							mediump float d = smoothstep(0.99, 1.0, dot(ref, vec3(0.0, 0.0, 1.0))) * (1.0 - alpha);
+							if (d > 0.0) {
+								gl_FragColor = mix(gl_FragColor, vec4(1.0, 1.0, 1.0, 1.0), d);
+							}
+						}
 					}
 				"
+
+				MouseArea {
+					id: lightArea
+					anchors.fill: parent
+				}
 			}
 		}
 	}
