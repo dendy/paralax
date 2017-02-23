@@ -9,6 +9,7 @@ QtObject {
 	property real softness: 0
 	property bool specular: true
 	property real ascend: 1.0
+	property real samples: 0.5
 	property ShaderEffectSource heightMap
 
 	property ListModel model: ListModel {
@@ -76,6 +77,7 @@ QtObject {
 					property point pos: self.light.pos
 					property real size: self.light.size
 					property real ascend: self.context.ascend
+					property real samples: self.context.samples
 
 					property real softness: self.context.softness
 
@@ -96,6 +98,7 @@ QtObject {
 						uniform float ascend;
 						uniform vec2 fragSize;
 						uniform float softness;
+						uniform float samples;
 
 						void main() {
 							lowp vec4 c = texture2D(src, qt_TexCoord0);
@@ -111,7 +114,7 @@ QtObject {
 
 							if (shadow != 1.0) {
 								mediump float s = c.a;
-								mediump float rangeStep = fragSize.x * 0.5;
+								mediump float rangeStep = fragSize.x * samples;
 								for (float range = rangeStep; range < dist; range += rangeStep) {
 									mediump float step = range / dist;
 									lowp float a = texture2D(src, qt_TexCoord0 + dist * dir * step).a - c.a;

@@ -23,6 +23,7 @@ Window {
 		ascend: ascendSlider.value
 		heightMap: colorFbo
 		fboSize: self.fboSize
+		samples: samplesSlider.value
 
 		Component.onCompleted: {
 			model.append({light: redLight});
@@ -305,6 +306,11 @@ Window {
 			Row {
 				Text { text: 'Light ascend:' }
 				Slider { id: ascendSlider; minimumValue: 1.1; maximumValue: 10; value: 3 }
+			}
+
+			Row {
+				Text { text: 'Samples:' }
+				Slider { id: samplesSlider; minimumValue: 0.1; maximumValue: 2.0; value: 0.5 }
 			}
 
 			CheckBox { id: specularCheckBox; text: "Specular"; checked: true }
