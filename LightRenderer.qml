@@ -169,8 +169,7 @@ QtObject {
 
 							mediump vec3 light = normalize(vec3(qt_TexCoord0, c.a) - vec3(pos, ascend));
 							mediump vec2 sn = (texture2D(norm, qt_TexCoord0).rg - vec2(0.5)) * 2.0;
-							mediump vec3 n = vec3(sn, sqrt(1.0 - pow(sn.x, 2.0) - pow(sn.y, 2.0)));
-							n = normalize(vec3(sn, 1.0));
+							mediump vec3 n = normalize(vec3(sn, 1.0));
 							mediump vec3 ref = reflect(light, n);
 							mediump float d = smoothstep(0.99, 1.0, dot(ref, vec3(0.0, 0.0, 1.0)));
 							gl_FragColor = texture2D(base, qt_TexCoord0);
