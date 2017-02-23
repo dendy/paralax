@@ -7,8 +7,35 @@ import QtQuick.Controls 1.2
 Window {
 	id: self
 
-	width: 600
+	width: 800
 	height: 600
+
+	property LightRenderer light: LightRenderer {
+		id: renderer
+
+		ambient: '#7f2040'
+
+		heightMap: colorFbo
+
+		Component.onCompleted: {
+			model.append({light: redLight});
+			model.append({light: blueLight});
+		}
+	}
+
+	Light {
+		id: redLight
+		color: '#ff80f0'
+		pos: Qt.point(0.2, 0.3)
+		size: 0.5
+	}
+
+	Light {
+		id: blueLight
+		color: '#4080ff'
+		pos: Qt.point(0.6, 0.5)
+		size: 0.6
+	}
 
 	Component {
 		id: point
@@ -41,31 +68,11 @@ Window {
 			Layout.fillWidth: true
 			Layout.fillHeight: true
 
-			ShaderEffectSource {
-				id: normalFbo
-
+			ShaderEffect {
 				Layout.fillWidth: true
 				Layout.fillHeight: true
 
-				sourceItem: ShaderEffect {
-					width: colorFbo.width
-					height: colorFbo.height
-					property var src: colorFbo
-					property point fragSize: Qt.point(1.0/colorFbo.textureSize.width, 1.0/colorFbo.textureSize.height)
-					fragmentShader: "
-						varying vec2 qt_TexCoord0;
-						uniform sampler2D src;
-						uniform vec2 fragSize;
-						void main() {
-							mediump float x1 = texture2D(src, vec2(qt_TexCoord0.x - fragSize.x, qt_TexCoord0.y)).a;
-							mediump float x2 = texture2D(src, vec2(qt_TexCoord0.x + fragSize.x, qt_TexCoord0.y)).a;
-							mediump float y1 = texture2D(src, vec2(qt_TexCoord0.x, qt_TexCoord0.y - fragSize.y)).a;
-							mediump float y2 = texture2D(src, vec2(qt_TexCoord0.x, qt_TexCoord0.y + fragSize.y)).a;
-							mediump vec2 n = -vec2(x2 - x1, y2 - y1) * 0.5 + vec2(0.5);
-							gl_FragColor = vec4(n.x, n.y, 1.0, 1.0);
-						}
-					"
-				}
+				property var source: renderer.normalMap
 			}
 
 			ShaderEffectSource {
@@ -151,65 +158,20 @@ Window {
 				Layout.fillWidth: true
 				Layout.fillHeight: true
 
-				ColumnLayout {
+				GridView {
 					anchors.fill: parent
+					model: renderer.fboModel
+					delegate: Item {
+						id: self
 
-					Row {
-						Text { text: 'Softness:' }
-						Slider { id: softnessSlider }
-					}
+						width: 100
+						height: width
 
-					Row {
-						Text { text: 'Light ascend:' }
-						Slider { id: ascendSlider; minimumValue: 1.1; maximumValue: 10; value: 3 }
-					}
+						property var light: model.light
 
-					CheckBox { id: specular; text: "Specular"; checked: true }
-					CheckBox { id: animateLight; text: "Animate light"; checked: true }
-
-					Item {
-						Layout.fillHeight: true
-					}
-
-					Row {
-						Text { text: 'Icon scale' }
-						Slider { id: iconScaleSlider; value: 2; minimumValue: 1; maximumValue: 5 }
-					}
-
-					ListView {
-						id: iconView
-						Layout.preferredHeight: 55
-						Layout.fillWidth: true
-						orientation: ListView.Horizontal
-						model: ListModel {
-							ListElement { name: "star" }
-							ListElement { name: "cloud" }
-							ListElement { name: "gear" }
-							ListElement { name: "leaf" }
-							ListElement { clear: true }
-						}
-						delegate: Rectangle {
-							id: delegate
-							height: ListView.view.height
-							width: height
-							radius: 10
-							border.color: ListView.isCurrentItem ? "black" : "transparent"
-							border.width: 2
-
-							Image {
-								anchors { fill: parent; margins: 5 }
-								source: model.name ? model.name + ".png" : ''
-							}
-
-							Text {
-								anchors.centerIn: parent
-								text: model.clear ? "CLEAR" : ''
-							}
-
-							MouseArea {
-								anchors.fill: parent
-								onPressed: delegate.ListView.view.currentIndex = model.index;
-							}
+						ShaderEffect {
+							anchors.fill: parent
+							property var source: self.light.fbo
 						}
 					}
 				}
@@ -229,7 +191,7 @@ Window {
 				property real radangle: angle * Math.PI / 180.0
 
 				property var src: colorFbo
-				property var norm: normalFbo
+				property var norm: renderer.normalMap
 				property real ascend: ascendSlider.value
 				property point pos: animateLight.checked ?
 						Qt.point(0.5 + Math.sin(radangle) * 0.3, 0.5 + Math.cos(radangle) * 0.3) :
@@ -294,6 +256,70 @@ Window {
 				MouseArea {
 					id: lightArea
 					anchors.fill: parent
+				}
+			}
+		}
+
+		ColumnLayout {
+			Layout.maximumWidth: 300
+			Layout.fillHeight: true
+
+			Row {
+				Text { text: 'Softness:' }
+				Slider { id: softnessSlider }
+			}
+
+			Row {
+				Text { text: 'Light ascend:' }
+				Slider { id: ascendSlider; minimumValue: 1.1; maximumValue: 10; value: 3 }
+			}
+
+			CheckBox { id: specular; text: "Specular"; checked: true }
+			CheckBox { id: animateLight; text: "Animate light"; checked: true }
+
+			Item {
+				Layout.fillHeight: true
+			}
+
+			Row {
+				Text { text: 'Icon scale' }
+				Slider { id: iconScaleSlider; value: 2; minimumValue: 1; maximumValue: 5 }
+			}
+
+			ListView {
+				id: iconView
+				Layout.preferredHeight: 55
+				Layout.fillWidth: true
+				orientation: ListView.Horizontal
+				model: ListModel {
+					ListElement { name: "star" }
+					ListElement { name: "cloud" }
+					ListElement { name: "gear" }
+					ListElement { name: "leaf" }
+					ListElement { clear: true }
+				}
+				delegate: Rectangle {
+					id: delegate
+					height: ListView.view.height
+					width: height
+					radius: 10
+					border.color: ListView.isCurrentItem ? "black" : "transparent"
+					border.width: 2
+
+					Image {
+						anchors { fill: parent; margins: 5 }
+						source: model.name ? model.name + ".png" : ''
+					}
+
+					Text {
+						anchors.centerIn: parent
+						text: model.clear ? "CLEAR" : ''
+					}
+
+					MouseArea {
+						anchors.fill: parent
+						onPressed: delegate.ListView.view.currentIndex = model.index;
+					}
 				}
 			}
 		}
