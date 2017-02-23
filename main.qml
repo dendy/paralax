@@ -15,10 +15,14 @@ Window {
 
 		ambient: '#7f2040'
 
+		softness: softnessSlider.value
+		specular: specularCheckBox.checked
+		ascend: ascendSlider.value
 		heightMap: colorFbo
 
 		Component.onCompleted: {
 			model.append({light: redLight});
+			model.append({light: greenLight});
 			model.append({light: blueLight});
 		}
 	}
@@ -26,15 +30,42 @@ Window {
 	Light {
 		id: redLight
 		color: '#ff80f0'
-		pos: Qt.point(0.2, 0.3)
-		size: 0.5
+		size: 0.9
+
+		property real angle: 0
+		RotationAnimation on angle {
+			from: 0; to: 360
+			duration: 5000
+			loops: Animation.Infinite
+			running: animateLight.checked
+		}
+		property real radangle: angle * Math.PI / 180.0
+
+		pos: animateLight.checked ?
+				Qt.point(0.5 + Math.sin(radangle) * 0.3, 0.5 + Math.cos(radangle) * 0.3) :
+				Qt.point(lightArea.mouseX/lightArea.width, lightArea.mouseY/lightArea.height)
+	}
+
+	Light {
+		id: greenLight
+		color: '#40cc40'
+		pos: Qt.point(0.5, 0.9)
+		size: 0.4
 	}
 
 	Light {
 		id: blueLight
-		color: '#4080ff'
-		pos: Qt.point(0.6, 0.5)
+		color: '#404000ff'
+		pos: Qt.point(0.9, by)
 		size: 0.6
+
+		property real by
+		SequentialAnimation on by {
+			NumberAnimation { from: 0; to: 1; duration: 1000; easing.type: Easing.InOutQuad }
+			NumberAnimation { from: 1; to: 0; duration: 2000; easing.type: Easing.OutBounce }
+			loops: Animation.Infinite
+			running: animateLight.checked
+		}
 	}
 
 	Component {
@@ -161,17 +192,34 @@ Window {
 				GridView {
 					anchors.fill: parent
 					model: renderer.fboModel
+					cellWidth: 300
+					cellHeight: cellWidth/2
 					delegate: Item {
 						id: self
-
-						width: 100
-						height: width
+						width: GridView.view.cellWidth
+						height: GridView.view.cellHeight
 
 						property var light: model.light
 
-						ShaderEffect {
+						Rectangle {
 							anchors.fill: parent
-							property var source: self.light.fbo
+							color: "#80000000"
+						}
+
+						RowLayout {
+							anchors { fill: parent; margins: 4 }
+
+							ShaderEffect {
+								Layout.fillWidth: true
+								Layout.fillHeight: true
+								property var source: self.light.fbo
+							}
+
+							ShaderEffect {
+								Layout.fillWidth: true
+								Layout.fillHeight: true
+								property var source: self.light.specularFbo
+							}
 						}
 					}
 				}
@@ -181,74 +229,23 @@ Window {
 				Layout.fillWidth: true
 				Layout.fillHeight: true
 
-				property real angle: 0
-				RotationAnimation on angle {
-					from: 0; to: 360
-					duration: 5000
-					loops: Animation.Infinite
-					running: animateLight.checked
-				}
-				property real radangle: angle * Math.PI / 180.0
-
-				property var src: colorFbo
-				property var norm: renderer.normalMap
-				property real ascend: ascendSlider.value
-				property point pos: animateLight.checked ?
-						Qt.point(0.5 + Math.sin(radangle) * 0.3, 0.5 + Math.cos(radangle) * 0.3) :
-						Qt.point(lightArea.mouseX/lightArea.width, lightArea.mouseY/lightArea.height)
-				property int samples: 50
-				property point fragSize: Qt.point(1.0/colorFbo.textureSize.width, 1.0/colorFbo.textureSize.height)
-				property real softness: softnessSlider.value
-				property bool specular: specular.checked
+				property var lightMap: renderer.lightMap
+				property var specularMap: renderer.specularMap
+				property bool specular: specularCheckBox.checked
 
 				fragmentShader: "
 					varying vec2 qt_TexCoord0;
-					uniform sampler2D src;
-					uniform sampler2D norm;
-					uniform float ascend;
-					uniform vec2 pos;
-					uniform int samples;
-					uniform vec2 fragSize;
-					uniform float softness;
+					uniform sampler2D lightMap;
+					uniform sampler2D specularMap;
 					uniform bool specular;
 
 					void main() {
-						lowp vec4 c = texture2D(src, qt_TexCoord0);
-
-						mediump vec2 dir = normalize(pos - qt_TexCoord0);
-						mediump float fullDist = distance(pos, qt_TexCoord0);
-
-						mediump float localAscend = ascend - c.a;
-						mediump float localHeight = 1.0 - c.a;
-						mediump float dist = fullDist / localAscend;
-
-						mediump float shadow = smoothstep(0.3, 0.7, fullDist);
-
-						if (shadow != 1.0) {
-							mediump float s = c.a;
-							mediump float rangeStep = fragSize.x * 0.5;
-							for (float range = rangeStep; range < dist; range += rangeStep) {
-								mediump float step = range / dist;
-								lowp float a = texture2D(src, qt_TexCoord0 + dist * dir * step).a - c.a;
-								s = max(s, c.a + a*localHeight/step);
-								if (s >= 1.0) break;
-							}
-							shadow = max(shadow, smoothstep(softness, 1.0, s - c.a));
-						}
-
-						mediump float alpha = shadow;
-						gl_FragColor = mix(vec4(0.8, 0.6, 0.4, 1.0), vec4(vec3(0.0), 1.0), alpha * 0.4);
+						gl_FragColor.rgb = vec3(0.8, 0.6, 0.4) * texture2D(lightMap, qt_TexCoord0).rgb;
+						gl_FragColor.a = 1.0;
 
 						if (specular) {
-							mediump vec3 light = normalize(vec3(qt_TexCoord0, c.a) - vec3(pos, ascend));
-							mediump vec2 sn = (texture2D(norm, qt_TexCoord0).rg - vec2(0.5)) * 2.0;
-							mediump vec3 n = vec3(sn, sqrt(1.0 - pow(sn.x, 2.0) - pow(sn.y, 2.0)));
-							n = normalize(vec3(sn, 1.0));
-							mediump vec3 ref = reflect(light, n);
-							mediump float d = smoothstep(0.99, 1.0, dot(ref, vec3(0.0, 0.0, 1.0))) * (1.0 - alpha);
-							if (d > 0.0) {
-								gl_FragColor = mix(gl_FragColor, vec4(1.0, 1.0, 1.0, 1.0), d);
-							}
+							lowp vec4 scolor = texture2D(specularMap, qt_TexCoord0);
+							gl_FragColor.rgb = gl_FragColor.rgb * (vec3(1.0) - scolor.rgb) + scolor.rgb;
 						}
 					}
 				"
@@ -274,7 +271,7 @@ Window {
 				Slider { id: ascendSlider; minimumValue: 1.1; maximumValue: 10; value: 3 }
 			}
 
-			CheckBox { id: specular; text: "Specular"; checked: true }
+			CheckBox { id: specularCheckBox; text: "Specular"; checked: true }
 			CheckBox { id: animateLight; text: "Animate light"; checked: true }
 
 			Item {
