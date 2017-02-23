@@ -109,83 +109,94 @@ Window {
 			Layout.fillWidth: true
 			Layout.fillHeight: true
 
-			ShaderEffect {
+			Item {
 				Layout.fillWidth: true
 				Layout.fillHeight: true
 
-				property var source: renderer.normalMap
+				ShaderEffect {
+					anchors.centerIn: parent
+					width: Math.min(parent.width, parent.height)
+					height: width
+					property var source: renderer.normalMap
+				}
 			}
 
-			ShaderEffectSource {
-				id: colorFbo
-
+			Item {
 				Layout.fillWidth: true
 				Layout.fillHeight: true
 
-				sourceItem: ShaderEffect {
-					width: colorItem.width
-					height: colorItem.height
-					property var src: ShaderEffectSource { sourceItem: colorItem; hideSource: true }
-					property var base: colorFbo
-					property bool clear: iconView.model.get(iconView.currentIndex).clear === true
-					property point clearPos: Qt.point(paintArea.mouseX/paintArea.width, paintArea.mouseY/paintArea.height)
-					fragmentShader: "
-						varying vec2 qt_TexCoord0;
-						uniform sampler2D src;
-						uniform sampler2D base;
-						uniform bool clear;
-						uniform vec2 clearPos;
-						void main() {
-							if (clear) {
-								gl_FragColor = distance(qt_TexCoord0, clearPos) < 0.06 ? vec4(0.0) : texture2D(base, qt_TexCoord0);
-							} else {
-								gl_FragColor = texture2D(base, qt_TexCoord0) + texture2D(src, qt_TexCoord0);
+				ShaderEffectSource {
+					id: colorFbo
+
+					anchors.centerIn: parent
+					width: Math.min(parent.width, parent.height)
+					height: width
+
+					sourceItem: ShaderEffect {
+						width: colorItem.width
+						height: colorItem.height
+						property var src: ShaderEffectSource { sourceItem: colorItem; hideSource: true }
+						property var base: colorFbo
+						property bool clear: iconView.model.get(iconView.currentIndex).clear === true
+						property point clearPos: Qt.point(paintArea.mouseX/paintArea.width, paintArea.mouseY/paintArea.height)
+						fragmentShader: "
+							varying vec2 qt_TexCoord0;
+							uniform sampler2D src;
+							uniform sampler2D base;
+							uniform bool clear;
+							uniform vec2 clearPos;
+							void main() {
+								if (clear) {
+									gl_FragColor = distance(qt_TexCoord0, clearPos) < 0.06 ? vec4(0.0) : texture2D(base, qt_TexCoord0);
+								} else {
+									gl_FragColor = texture2D(base, qt_TexCoord0) + texture2D(src, qt_TexCoord0);
+								}
 							}
+						"
+					}
+					live: false
+					recursive: true
+					textureSize: self.fboSize
+
+					MouseArea {
+						id: paintArea
+
+						anchors.fill: parent
+
+						property var points: []
+
+						function addb(x, y, name, scale) {
+							var p = point.createObject(colorItem);
+							p.x = Qt.binding(function() {return colorItem.width*x});
+							p.y = Qt.binding(function() {return colorItem.height*y});
+							p.name = name;
+							p.iconScale = scale;
+							points.push(p);
 						}
-					"
-				}
-				live: false
-				recursive: true
-				textureSize: self.fboSize
 
-				MouseArea {
-					id: paintArea
+						function paint(mouse) {
+							for (var p in points) points[p].destroy();
+							points = [];
+							points.push(point.createObject(colorItem, {
+								x: mouse.x*colorItem.width/width,
+								y: mouse.y*colorItem.height/height,
+								name: iconView.model.get(iconView.currentIndex).name,
+								iconScale: iconScaleSlider.value
+							}));
+							colorFbo.scheduleUpdate();
+						}
 
-					anchors.fill: parent
+						onPressed: paint(mouse);
+						onPositionChanged: paint(mouse);
 
-					property var points: []
-
-					function addb(x, y, name, scale) {
-						var p = point.createObject(colorItem);
-						p.x = Qt.binding(function() {return colorItem.width*x});
-						p.y = Qt.binding(function() {return colorItem.height*y});
-						p.name = name;
-						p.iconScale = scale;
-						points.push(p);
-					}
-
-					function paint(mouse) {
-						for (var p in points) points[p].destroy();
-						points = [];
-						points.push(point.createObject(colorItem, {
-							x: mouse.x*colorItem.width/width,
-							y: mouse.y*colorItem.height/height,
-							name: iconView.model.get(iconView.currentIndex).name,
-							iconScale: iconScaleSlider.value
-						}));
-						colorFbo.scheduleUpdate();
-					}
-
-					onPressed: paint(mouse);
-					onPositionChanged: paint(mouse);
-
-					Component.onCompleted: {
-						addb(0.2, 0.3, 'star', 1.5);
-						addb(0.6, 0.7, 'gear', 3.0);
-						addb(0.3, 0.4, 'star', 2.5);
-						addb(0.8, 0.3, 'cloud', 4.0);
-						addb(0.9, 0.8, 'leaf', 2.5);
-						colorFbo.scheduleUpdate();
+						Component.onCompleted: {
+							addb(0.2, 0.3, 'star', 1.5);
+							addb(0.6, 0.7, 'gear', 3.0);
+							addb(0.3, 0.4, 'star', 2.5);
+							addb(0.8, 0.3, 'cloud', 4.0);
+							addb(0.9, 0.8, 'leaf', 2.5);
+							colorFbo.scheduleUpdate();
+						}
 					}
 				}
 			}
@@ -235,34 +246,41 @@ Window {
 				}
 			}
 
-			ShaderEffect {
+			Item {
 				Layout.fillWidth: true
 				Layout.fillHeight: true
 
-				property var lightMap: renderer.lightMap
-				property var specularMap: renderer.specularMap
-				property bool specular: specularCheckBox.checked
+				ShaderEffect {
+					anchors.centerIn: parent
 
-				fragmentShader: "
-					varying vec2 qt_TexCoord0;
-					uniform sampler2D lightMap;
-					uniform sampler2D specularMap;
-					uniform bool specular;
+					width: Math.min(parent.width, parent.height)
+					height: width
 
-					void main() {
-						gl_FragColor.rgb = vec3(0.8, 0.6, 0.4) * texture2D(lightMap, qt_TexCoord0).rgb;
-						gl_FragColor.a = 1.0;
+					property var lightMap: renderer.lightMap
+					property var specularMap: renderer.specularMap
+					property bool specular: specularCheckBox.checked
 
-						if (specular) {
-							lowp vec4 scolor = texture2D(specularMap, qt_TexCoord0);
-							gl_FragColor.rgb = gl_FragColor.rgb * (vec3(1.0) - scolor.rgb) + scolor.rgb;
+					fragmentShader: "
+						varying vec2 qt_TexCoord0;
+						uniform sampler2D lightMap;
+						uniform sampler2D specularMap;
+						uniform bool specular;
+
+						void main() {
+							gl_FragColor.rgb = vec3(0.8, 0.6, 0.4) * texture2D(lightMap, qt_TexCoord0).rgb;
+							gl_FragColor.a = 1.0;
+
+							if (specular) {
+								lowp vec4 scolor = texture2D(specularMap, qt_TexCoord0);
+								gl_FragColor.rgb = gl_FragColor.rgb * (vec3(1.0) - scolor.rgb) + scolor.rgb;
+							}
 						}
-					}
-				"
+					"
 
-				MouseArea {
-					id: lightArea
-					anchors.fill: parent
+					MouseArea {
+						id: lightArea
+						anchors.fill: parent
+					}
 				}
 			}
 		}
