@@ -11,7 +11,9 @@ Window {
 	width: 800
 	height: 600
 
-	property size fboSize: Qt.size(256, 256);
+	property size colorMapSize: Qt.size(colorMapSizeGroup.current.size, colorMapSizeGroup.current.size)
+	property size lightMapSize: Qt.size(lightMapSizeGroup.current.size, lightMapSizeGroup.current.size)
+	property size specularMapSize: Qt.size(specularMapSizeGroup.current.size, specularMapSizeGroup.current.size)
 
 	property LightRenderer light: LightRenderer {
 		id: renderer
@@ -22,7 +24,8 @@ Window {
 		specular: specularCheckBox.checked
 		ascend: ascendSlider.value
 		heightMap: colorFbo
-		fboSize: self.fboSize
+		lightMapSize: self.lightMapSize
+		specularMapSize: self.specularMapSize
 		samples: samplesSlider.value
 
 		Component.onCompleted: {
@@ -157,7 +160,7 @@ Window {
 					}
 					live: false
 					recursive: true
-					textureSize: self.fboSize
+					textureSize: self.colorMapSize
 
 					MouseArea {
 						id: paintArea

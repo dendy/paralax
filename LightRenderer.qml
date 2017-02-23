@@ -23,11 +23,12 @@ QtObject {
 	property var lightMap: ambientLight.fbo
 	property var specularMap: ambientLight.specularFbo
 
-	property size fboSize: Qt.size(512, 512)
+	property size lightMapSize: Qt.size(256, 256)
+	property size specularMapSize: Qt.size(256, 256)
 
 	property var ambientLight : QtObject {
 		property ShaderEffectSource fbo: ShaderEffectSource {
-			textureSize: self.fboSize
+			textureSize: self.lightMapSize
 
 			sourceItem: ShaderEffect {
 				width: 100
@@ -45,7 +46,7 @@ QtObject {
 		}
 
 		property ShaderEffectSource specularFbo: ShaderEffectSource {
-			textureSize: self.fboSize
+			textureSize: self.specularMapSize
 			sourceItem: Rectangle {
 				width: 1; height: 1
 				color: "transparent"
@@ -65,7 +66,7 @@ QtObject {
 			property Light light
 
 			property ShaderEffectSource fbo: ShaderEffectSource {
-				textureSize: self.context.fboSize
+				textureSize: self.context.lightMapSize
 
 				sourceItem: ShaderEffect {
 					width: 10
@@ -136,7 +137,7 @@ QtObject {
 			}
 
 			property ShaderEffectSource specularFbo: ShaderEffectSource {
-				textureSize: self.context.fboSize
+				textureSize: self.context.specularMapSize
 
 				sourceItem: ShaderEffect {
 					width: 10
