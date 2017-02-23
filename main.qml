@@ -18,7 +18,7 @@ Window {
 	property LightRenderer light: LightRenderer {
 		id: renderer
 
-		ambient: '#7f2040'
+		ambient: '#5f2040'
 
 		softness: softnessSlider.value
 		specular: specularCheckBox.checked
@@ -260,18 +260,23 @@ Window {
 					width: Math.min(parent.width, parent.height)
 					height: width
 
+					property var colorMap: colorFbo
 					property var lightMap: renderer.lightMap
 					property var specularMap: renderer.specularMap
 					property bool specular: specularCheckBox.checked
+					property color background: Qt.rgba(0.8, 0.6, 0.4, 1.0)
 
 					fragmentShader: "
 						varying vec2 qt_TexCoord0;
+						uniform sampler2D colorMap;
 						uniform sampler2D lightMap;
 						uniform sampler2D specularMap;
+						uniform vec4 background;
 						uniform bool specular;
 
 						void main() {
-							gl_FragColor.rgb = vec3(0.8, 0.6, 0.4) * texture2D(lightMap, qt_TexCoord0).rgb;
+							lowp vec3 color = background.rgb + texture2D(colorMap, qt_TexCoord0).rgb;
+							gl_FragColor.rgb = color * texture2D(lightMap, qt_TexCoord0).rgb;
 							gl_FragColor.a = 1.0;
 
 							if (specular) {
@@ -467,6 +472,7 @@ Window {
 					ListElement { name: "cloud" }
 					ListElement { name: "gear" }
 					ListElement { name: "leaf" }
+					ListElement { name: 'blender' }
 					ListElement { clear: true }
 				}
 				delegate: Rectangle {
