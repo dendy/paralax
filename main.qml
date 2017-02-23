@@ -79,12 +79,20 @@ Window {
 					height: colorItem.height
 					property var src: ShaderEffectSource { sourceItem: colorItem; hideSource: true }
 					property var base: colorFbo
+					property bool clear: iconView.model.get(iconView.currentIndex).clear === true
+					property point clearPos: Qt.point(paintArea.mouseX/paintArea.width, paintArea.mouseY/paintArea.height)
 					fragmentShader: "
 						varying vec2 qt_TexCoord0;
 						uniform sampler2D src;
 						uniform sampler2D base;
+						uniform bool clear;
+						uniform vec2 clearPos;
 						void main() {
-							gl_FragColor = texture2D(base, qt_TexCoord0) + texture2D(src, qt_TexCoord0);
+							if (clear) {
+								gl_FragColor = distance(qt_TexCoord0, clearPos) < 0.06 ? vec4(0.0) : texture2D(base, qt_TexCoord0);
+							} else {
+								gl_FragColor = texture2D(base, qt_TexCoord0) + texture2D(src, qt_TexCoord0);
+							}
 						}
 					"
 				}
@@ -93,6 +101,8 @@ Window {
 				textureSize: Qt.size(512, 512)
 
 				MouseArea {
+					id: paintArea
+
 					anchors.fill: parent
 
 					property var points: []
@@ -174,6 +184,7 @@ Window {
 						model: ListModel {
 							ListElement { name: "star" }
 							ListElement { name: "cloud" }
+							ListElement { clear: true }
 						}
 						delegate: Rectangle {
 							id: delegate
@@ -185,7 +196,12 @@ Window {
 
 							Image {
 								anchors { fill: parent; margins: 10 }
-								source: model.name + ".png"
+								source: model.name ? model.name + ".png" : ''
+							}
+
+							Text {
+								anchors.centerIn: parent
+								text: model.clear ? "CLEAR" : ''
 							}
 
 							MouseArea {
