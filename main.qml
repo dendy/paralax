@@ -11,7 +11,7 @@ Window {
 	width: 800
 	height: 600
 
-	property size fboSize: Qt.size(1024, 1024);
+	property size fboSize: Qt.size(256, 256);
 
 	property LightRenderer light: LightRenderer {
 		id: renderer
