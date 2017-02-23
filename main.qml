@@ -223,7 +223,7 @@ Window {
 						property var light: model.light
 
 						Rectangle {
-							anchors.fill: parent
+							anchors { fill: parent; margins: 2 }
 							color: "#80000000"
 						}
 
@@ -363,7 +363,7 @@ Window {
 					}
 
 					Button {
-						anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
+						anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 8 }
 						text: 'Select'
 						onClicked: {
 							lightView.colorDialog.light = null;
