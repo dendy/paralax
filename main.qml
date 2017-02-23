@@ -237,13 +237,13 @@ Window {
 							ShaderEffect {
 								Layout.fillWidth: true
 								Layout.fillHeight: true
-								property var source: self.light.fbo
+								property var source: self.light ? self.light.fbo : undefined
 							}
 
 							ShaderEffect {
 								Layout.fillWidth: true
 								Layout.fillHeight: true
-								property var source: self.light.specularFbo
+								property var source: self.light ? self.light.specularFbo : undefined
 							}
 						}
 					}
@@ -298,6 +298,8 @@ Window {
 		}
 
 		ColumnLayout {
+			id: controlsLayout
+
 			Layout.maximumWidth: 300
 			Layout.fillHeight: true
 
@@ -323,11 +325,77 @@ Window {
 				Layout.fillHeight: true
 			}
 
+			property real fboTitleWidth: 60
+
+			Row {
+				Text { id: colorTitle; text: 'Color:'; width: controlsLayout.fboTitleWidth }
+				ExclusiveGroup { id: colorMapSizeGroup }
+				Repeater {
+					model: 6
+					delegate: RadioButton {
+						property int size: Math.pow(2, index + 5)
+						exclusiveGroup: colorMapSizeGroup
+						text: size
+						checked: size === 512
+					}
+				}
+			}
+
+			Row {
+				Text { id: lightTitle; text: 'Light:'; width: controlsLayout.fboTitleWidth }
+				ExclusiveGroup { id: lightMapSizeGroup }
+				Repeater {
+					model: 6
+					delegate: RadioButton {
+						property int size: Math.pow(2, index + 5)
+						exclusiveGroup: lightMapSizeGroup
+						text: size
+						checked: size === 256
+					}
+				}
+			}
+
+			Row {
+				Text { id: specularTitle; text: 'Specular:'; width: controlsLayout.fboTitleWidth }
+				ExclusiveGroup { id: specularMapSizeGroup }
+				Repeater {
+					model: 6
+					delegate: RadioButton {
+						property int size: Math.pow(2, index + 5)
+						exclusiveGroup: specularMapSizeGroup
+						text: size
+						checked: size === 512
+					}
+				}
+			}
+
+			Row {
+				Text { text: 'Lights:' }
+
+				Button {
+					Component { id: lightComponent; Light {} }
+					text: 'Add'
+					onClicked: {
+						var l = lightComponent.createObject(null, {color: 'white', size: 0.5, pos: Qt.point(0.5, 0.5)});
+						var index = self.light.model.count;
+						self.light.model.append({light: l});
+						lightView.currentIndex = index;
+					}
+				}
+
+				Button {
+					text: 'Remove'
+					onClicked: {
+						self.light.model.remove(lightView.currentIndex);
+					}
+				}
+			}
+
 			ListView {
 				id: lightView
 				Layout.preferredHeight: 100
 				Layout.fillWidth: true
-				model: ListModel {}
+				model: self.light.model
 				spacing: 10
 				orientation: ListView.Horizontal
 
@@ -381,12 +449,6 @@ Window {
 							lightView.colorDialog.light = delegate.light;
 						}
 					}
-				}
-
-				Component.onCompleted: {
-					model.append({light: redLight});
-					model.append({light: greenLight});
-					model.append({light: blueLight});
 				}
 			}
 
