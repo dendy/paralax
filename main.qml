@@ -48,9 +48,16 @@ Window {
 
 	Light {
 		id: greenLight
-		color: '#40cc40'
+		color: 'white'
 		pos: Qt.point(0.5, 0.9)
 		size: 0.4
+
+		SequentialAnimation on color {
+			ColorAnimation { duration: 5000; to: '#20ff20'; easing.type: Easing.InOutCubic }
+			ColorAnimation { duration: 2000; to: '#40cc40'; easing.type: Easing.InOutExpo }
+			running: animateLight.checked
+			loops: Animation.Infinite
+		}
 	}
 
 	Light {
