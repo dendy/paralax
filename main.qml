@@ -145,7 +145,8 @@ Window {
 							uniform vec2 clearPos;
 							void main() {
 								if (clear) {
-									gl_FragColor = distance(qt_TexCoord0, clearPos) < 0.06 ? vec4(0.0) : texture2D(base, qt_TexCoord0);
+									mediump float dist = (1.0 - smoothstep(0.0, 0.1, distance(qt_TexCoord0, clearPos))) * 0.2;
+									gl_FragColor = texture2D(base, qt_TexCoord0) - vec4(dist);
 								} else {
 									gl_FragColor = texture2D(base, qt_TexCoord0) + texture2D(src, qt_TexCoord0);
 								}
