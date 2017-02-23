@@ -2,8 +2,6 @@
 import QtQuick 2.7
 import QtQuick.Window 2.2
 import QtQuick.Layouts 1.3
-import QtQuick.Controls 1.2
-import QtQuick.Dialogs 1.2
 
 Window {
 	id: self
@@ -11,98 +9,38 @@ Window {
 	width: 800
 	height: 600
 
-	property size colorMapSize: Qt.size(colorMapSizeGroup.current.size, colorMapSizeGroup.current.size)
-	property size lightMapSize: Qt.size(lightMapSizeGroup.current.size, lightMapSizeGroup.current.size)
-	property size specularMapSize: Qt.size(specularMapSizeGroup.current.size, specularMapSizeGroup.current.size)
+	property QtObject config: QtObject {
+		property size colorMapSize: Qt.size(controls.colorMapSize, controls.colorMapSize)
+		property size lightMapSize: Qt.size(controls.lightMapSize, controls.lightMapSize)
+		property size specularMapSize: Qt.size(controls.specularMapSize, controls.specularMapSize)
+	}
+
+	property QtObject global: QtObject {
+		property var addLight: self.scene.addLight
+		property var removeLight: self.scene.removeLight
+		property var controls: controls
+	}
 
 	property LightRenderer light: LightRenderer {
 		id: renderer
 
 		ambient: '#5f2040'
 
-		softness: softnessSlider.value
-		specular: specularCheckBox.checked
-		ascend: ascendSlider.value
-		heightMap: colorFbo
-		lightMapSize: self.lightMapSize
-		specularMapSize: self.specularMapSize
-		samples: samplesSlider.value
-
-		Component.onCompleted: {
-			model.append({light: redLight});
-			model.append({light: greenLight});
-			model.append({light: blueLight});
-		}
+		softness: controls.softness
+		specular: controls.specular
+		ascend: controls.ascend
+		heightMap: self.colorMap
+		lightMapSize: self.config.lightMapSize
+		specularMapSize: self.config.specularMapSize
+		samples: controls.samples
 	}
 
-	Light {
-		id: redLight
-		color: '#ff80f0'
-		size: 0.9
-
-		property real angle: 0
-		RotationAnimation on angle {
-			from: 0; to: 360
-			duration: 5000
-			loops: Animation.Infinite
-			running: animateLight.checked
-		}
-		property real radangle: angle * Math.PI / 180.0
-
-		pos: Qt.point(0.5 + Math.sin(radangle) * 0.3, 0.5 + Math.cos(radangle) * 0.3)
+	property Scene scene: Scene {
+		animate: controls.animate
+		lightModel: renderer.model
 	}
 
-	Light {
-		id: greenLight
-		color: 'white'
-		pos: Qt.point(0.5, 0.9)
-		size: 0.4
-
-		SequentialAnimation on color {
-			ColorAnimation { duration: 5000; to: '#20ff20'; easing.type: Easing.InOutCubic }
-			ColorAnimation { duration: 2000; to: '#40cc40'; easing.type: Easing.InOutExpo }
-			running: animateLight.checked
-			loops: Animation.Infinite
-		}
-	}
-
-	Light {
-		id: blueLight
-		color: '#404000ff'
-		pos: Qt.point(0.9, by)
-		size: 0.6
-
-		property real by
-		SequentialAnimation on by {
-			NumberAnimation { from: 0; to: 1; duration: 1000; easing.type: Easing.InOutQuad }
-			NumberAnimation { from: 1; to: 0; duration: 2000; easing.type: Easing.OutBounce }
-			loops: Animation.Infinite
-			running: animateLight.checked
-		}
-	}
-
-	Component {
-		id: point
-		Item {
-			id: self
-			property string name: "star"
-			property real iconScale: 1.0
-			Image {
-				anchors.centerIn: parent
-				width: 40
-				height: width
-				source: self.name + ".png"
-				opacity: 0.2
-				scale: self.iconScale
-			}
-		}
-	}
-
-	Item {
-		id: colorItem
-		width: 512
-		height: 512
-	}
+	property alias colorMap: editor.colorMap
 
 	RowLayout {
 		anchors.fill: parent
@@ -128,80 +66,9 @@ Window {
 				Layout.fillWidth: true
 				Layout.fillHeight: true
 
-				ShaderEffectSource {
-					id: colorFbo
-
-					anchors.centerIn: parent
-					width: Math.min(parent.width, parent.height)
-					height: width
-
-					sourceItem: ShaderEffect {
-						width: colorItem.width
-						height: colorItem.height
-						property var src: ShaderEffectSource { sourceItem: colorItem; hideSource: true }
-						property var base: colorFbo
-						property bool clear: iconView.model.get(iconView.currentIndex).clear === true
-						property point clearPos: Qt.point(paintArea.mouseX/paintArea.width, paintArea.mouseY/paintArea.height)
-						fragmentShader: "
-							varying vec2 qt_TexCoord0;
-							uniform sampler2D src;
-							uniform sampler2D base;
-							uniform bool clear;
-							uniform vec2 clearPos;
-							void main() {
-								if (clear) {
-									mediump float dist = (1.0 - smoothstep(0.0, 0.1, distance(qt_TexCoord0, clearPos))) * 0.2;
-									gl_FragColor = texture2D(base, qt_TexCoord0) - vec4(dist);
-								} else {
-									gl_FragColor = texture2D(base, qt_TexCoord0) + texture2D(src, qt_TexCoord0);
-								}
-							}
-						"
-					}
-					live: false
-					recursive: true
-					textureSize: self.colorMapSize
-
-					MouseArea {
-						id: paintArea
-
-						anchors.fill: parent
-
-						property var points: []
-
-						function addb(x, y, name, scale) {
-							var p = point.createObject(colorItem);
-							p.x = Qt.binding(function() {return colorItem.width*x});
-							p.y = Qt.binding(function() {return colorItem.height*y});
-							p.name = name;
-							p.iconScale = scale;
-							points.push(p);
-						}
-
-						function paint(mouse) {
-							for (var p in points) points[p].destroy();
-							points = [];
-							points.push(point.createObject(colorItem, {
-								x: mouse.x*colorItem.width/width,
-								y: mouse.y*colorItem.height/height,
-								name: iconView.model.get(iconView.currentIndex).name,
-								iconScale: iconScaleSlider.value
-							}));
-							colorFbo.scheduleUpdate();
-						}
-
-						onPressed: paint(mouse);
-						onPositionChanged: paint(mouse);
-
-						Component.onCompleted: {
-							addb(0.2, 0.3, 'star', 1.5);
-							addb(0.6, 0.7, 'gear', 3.0);
-							addb(0.3, 0.4, 'star', 2.5);
-							addb(0.8, 0.3, 'cloud', 4.0);
-							addb(0.9, 0.8, 'leaf', 2.5);
-							colorFbo.scheduleUpdate();
-						}
-					}
+				Editor {
+					id: editor
+					anchors.fill: parent
 				}
 			}
 		}
@@ -260,10 +127,10 @@ Window {
 					width: Math.min(parent.width, parent.height)
 					height: width
 
-					property var colorMap: colorFbo
+					property var colorMap: self.colorMap
 					property var lightMap: renderer.lightMap
 					property var specularMap: renderer.specularMap
-					property bool specular: specularCheckBox.checked
+					property bool specular: controls.specular
 					property color background: Qt.rgba(0.8, 0.6, 0.4, 1.0)
 
 					fragmentShader: "
@@ -289,10 +156,10 @@ Window {
 					MouseArea {
 						id: lightArea
 						anchors.fill: parent
-						enabled: !animateLight.checked
+						enabled: !controls.animate
 
 						function setPos(mouse) {
-							lightView.currentItem.customPos = Qt.point(mouseX/width, mouseY/height);
+							controls.setCustomLightPos(Qt.point(mouseX/width, mouseY/height));
 						}
 
 						onPressed: setPos(mouse);
@@ -302,203 +169,11 @@ Window {
 			}
 		}
 
-		ColumnLayout {
-			id: controlsLayout
-
-			Layout.maximumWidth: 300
+		Controls {
+			id: controls
+			Layout.preferredWidth: 300
 			Layout.fillHeight: true
-
-			Row {
-				Text { text: 'Softness:' }
-				Slider { id: softnessSlider }
-			}
-
-			Row {
-				Text { text: 'Light ascend:' }
-				Slider { id: ascendSlider; minimumValue: 1.1; maximumValue: 10; value: 3 }
-			}
-
-			Row {
-				Text { text: 'Samples:' }
-				Slider { id: samplesSlider; minimumValue: 0.1; maximumValue: 2.0; value: 0.5 }
-			}
-
-			CheckBox { id: specularCheckBox; text: "Specular"; checked: true }
-			CheckBox { id: animateLight; text: "Animate light"; checked: true }
-
-			Item {
-				Layout.fillHeight: true
-			}
-
-			property real fboTitleWidth: 60
-
-			Row {
-				Text { id: colorTitle; text: 'Color:'; width: controlsLayout.fboTitleWidth }
-				ExclusiveGroup { id: colorMapSizeGroup }
-				Repeater {
-					model: 6
-					delegate: RadioButton {
-						property int size: Math.pow(2, index + 5)
-						exclusiveGroup: colorMapSizeGroup
-						text: size
-						checked: size === 512
-					}
-				}
-			}
-
-			Row {
-				Text { id: lightTitle; text: 'Light:'; width: controlsLayout.fboTitleWidth }
-				ExclusiveGroup { id: lightMapSizeGroup }
-				Repeater {
-					model: 6
-					delegate: RadioButton {
-						property int size: Math.pow(2, index + 5)
-						exclusiveGroup: lightMapSizeGroup
-						text: size
-						checked: size === 256
-					}
-				}
-			}
-
-			Row {
-				Text { id: specularTitle; text: 'Specular:'; width: controlsLayout.fboTitleWidth }
-				ExclusiveGroup { id: specularMapSizeGroup }
-				Repeater {
-					model: 6
-					delegate: RadioButton {
-						property int size: Math.pow(2, index + 5)
-						exclusiveGroup: specularMapSizeGroup
-						text: size
-						checked: size === 512
-					}
-				}
-			}
-
-			Row {
-				Text { text: 'Lights:' }
-
-				Button {
-					Component { id: lightComponent; Light {} }
-					text: 'Add'
-					onClicked: {
-						var l = lightComponent.createObject(null, {color: 'white', size: 0.5, pos: Qt.point(0.5, 0.5)});
-						var index = self.light.model.count;
-						self.light.model.append({light: l});
-						lightView.currentIndex = index;
-					}
-				}
-
-				Button {
-					text: 'Remove'
-					onClicked: {
-						self.light.model.remove(lightView.currentIndex);
-					}
-				}
-			}
-
-			ListView {
-				id: lightView
-				Layout.preferredHeight: 100
-				Layout.fillWidth: true
-				model: self.light.model
-				spacing: 10
-				orientation: ListView.Horizontal
-
-				property ColorDialog colorDialog: ColorDialog {
-					showAlphaChannel: true
-
-					property var light: null
-
-					property Binding colorBinding: Binding {
-						target: lightView.colorDialog.light
-						property: 'color'
-						value: lightView.colorDialog.currentColor
-					}
-				}
-
-				delegate: Item {
-					id: delegate
-
-					property point customPos
-					property var light: model.light
-
-					Binding {
-						target: delegate.light
-						property: 'pos'
-						when: !animateLight.checked
-						value: delegate.customPos
-					}
-
-					width: 100
-					height: 80
-
-					Rectangle {
-						anchors.fill: parent
-						color: delegate.light.color
-						border.color: 'black'
-						border.width: delegate.ListView.isCurrentItem ? 5 : 0
-					}
-
-					MouseArea {
-						anchors.fill: parent
-						onPressed: delegate.ListView.view.currentIndex = model.index;
-					}
-
-					Button {
-						anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 8 }
-						text: 'Select'
-						onClicked: {
-							lightView.colorDialog.light = null;
-							lightView.colorDialog.color = delegate.light.color;
-							lightView.colorDialog.open();
-							lightView.colorDialog.light = delegate.light;
-						}
-					}
-				}
-			}
-
-			Row {
-				Text { text: 'Icon scale' }
-				Slider { id: iconScaleSlider; value: 2; minimumValue: 1; maximumValue: 5 }
-			}
-
-			ListView {
-				id: iconView
-				Layout.preferredHeight: 55
-				Layout.fillWidth: true
-				orientation: ListView.Horizontal
-				model: ListModel {
-					ListElement { name: "star" }
-					ListElement { name: "cloud" }
-					ListElement { name: "gear" }
-					ListElement { name: "leaf" }
-					ListElement { name: 'blender' }
-					ListElement { clear: true }
-				}
-				delegate: Rectangle {
-					id: delegate
-					height: ListView.view.height
-					width: height
-					radius: 10
-					border.color: ListView.isCurrentItem ? "black" : "transparent"
-					border.width: 2
-
-					Image {
-						anchors { fill: parent; margins: 5 }
-						source: model.name ? model.name + ".png" : ''
-					}
-
-					Text {
-						anchors.centerIn: parent
-						text: model.clear ? "CLEAR" : ''
-					}
-
-					MouseArea {
-						anchors.fill: parent
-						onPressed: delegate.ListView.view.currentIndex = model.index;
-					}
-				}
-			}
+			lightModel: self.scene.lightModel
 		}
 	}
 }
