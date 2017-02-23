@@ -13,12 +13,16 @@ Window {
 	Component {
 		id: point
 		Item {
+			id: self
+			property string name: "star"
+			property real iconScale: 1.0
 			Image {
 				anchors.centerIn: parent
 				width: 40
 				height: width
-				source: "star.png"
+				source: self.name + ".png"
 				opacity: 0.2
+				scale: self.iconScale
 			}
 		}
 	}
@@ -93,10 +97,12 @@ Window {
 
 					property var points: []
 
-					function addb(x, y) {
+					function addb(x, y, name, scale) {
 						var p = point.createObject(colorItem);
 						p.x = Qt.binding(function() {return colorItem.width*x});
 						p.y = Qt.binding(function() {return colorItem.height*y});
+						p.name = name;
+						p.iconScale = scale;
 						points.push(p);
 					}
 
@@ -105,7 +111,10 @@ Window {
 						points = [];
 						points.push(point.createObject(colorItem, {
 							x: mouse.x*colorItem.width/width,
-							y: mouse.y*colorItem.height/height}));
+							y: mouse.y*colorItem.height/height,
+							name: iconView.model.get(iconView.currentIndex).name,
+							iconScale: iconScaleSlider.value
+						}));
 						colorFbo.scheduleUpdate();
 					}
 
@@ -113,11 +122,11 @@ Window {
 					onPositionChanged: paint(mouse);
 
 					Component.onCompleted: {
-						addb(0.2, 0.3);
-						addb(0.6, 0.7);
-						addb(0.3, 0.4);
-						addb(0.8, 0.3);
-						addb(0.9, 0.8);
+						addb(0.2, 0.3, 'star', 1.5);
+						addb(0.6, 0.7, 'star', 3.0);
+						addb(0.3, 0.4, 'star', 2.5);
+						addb(0.8, 0.3, 'cloud', 4.0);
+						addb(0.9, 0.8, 'cloud', 2.5);
 						colorFbo.scheduleUpdate();
 					}
 				}
@@ -150,6 +159,40 @@ Window {
 
 					Item {
 						Layout.fillHeight: true
+					}
+
+					Row {
+						Text { text: 'Icon scale' }
+						Slider { id: iconScaleSlider; value: 2; minimumValue: 1; maximumValue: 5 }
+					}
+
+					ListView {
+						id: iconView
+						Layout.preferredHeight: 80
+						Layout.fillWidth: true
+						orientation: ListView.Horizontal
+						model: ListModel {
+							ListElement { name: "star" }
+							ListElement { name: "cloud" }
+						}
+						delegate: Rectangle {
+							id: delegate
+							height: ListView.view.height
+							width: height
+							radius: 10
+							border.color: ListView.isCurrentItem ? "black" : "transparent"
+							border.width: 2
+
+							Image {
+								anchors { fill: parent; margins: 10 }
+								source: model.name + ".png"
+							}
+
+							MouseArea {
+								anchors.fill: parent
+								onPressed: delegate.ListView.view.currentIndex = model.index;
+							}
+						}
 					}
 				}
 			}
