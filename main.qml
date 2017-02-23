@@ -3,6 +3,7 @@ import QtQuick 2.7
 import QtQuick.Window 2.2
 import QtQuick.Layouts 1.3
 import QtQuick.Controls 1.2
+import QtQuick.Dialogs 1.2
 
 Window {
 	id: self
@@ -315,30 +316,43 @@ Window {
 
 			ListView {
 				id: lightView
-				Layout.preferredHeight: 55
+				Layout.preferredHeight: 100
 				Layout.fillWidth: true
 				model: ListModel {}
 				spacing: 10
 				orientation: ListView.Horizontal
 
+				property ColorDialog colorDialog: ColorDialog {
+					showAlphaChannel: true
+
+					property var light: null
+
+					property Binding colorBinding: Binding {
+						target: lightView.colorDialog.light
+						property: 'color'
+						value: lightView.colorDialog.currentColor
+					}
+				}
+
 				delegate: Item {
 					id: delegate
 
 					property point customPos
+					property var light: model.light
 
 					Binding {
-						target: model.light
+						target: delegate.light
 						property: 'pos'
 						when: !animateLight.checked
 						value: delegate.customPos
 					}
 
-					width: 50
-					height: 50
+					width: 100
+					height: 80
 
 					Rectangle {
 						anchors.fill: parent
-						color: model.color
+						color: delegate.light.color
 						border.color: 'black'
 						border.width: delegate.ListView.isCurrentItem ? 5 : 0
 					}
@@ -347,12 +361,23 @@ Window {
 						anchors.fill: parent
 						onPressed: delegate.ListView.view.currentIndex = model.index;
 					}
+
+					Button {
+						anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
+						text: 'Select'
+						onClicked: {
+							lightView.colorDialog.light = null;
+							lightView.colorDialog.color = delegate.light.color;
+							lightView.colorDialog.open();
+							lightView.colorDialog.light = delegate.light;
+						}
+					}
 				}
 
 				Component.onCompleted: {
-					model.append({color: 'red', light: redLight});
-					model.append({color: 'green', light: greenLight});
-					model.append({color: 'blue', light: blueLight});
+					model.append({light: redLight});
+					model.append({light: greenLight});
+					model.append({light: blueLight});
 				}
 			}
 
