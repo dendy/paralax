@@ -125,6 +125,7 @@ Item {
 			model: self.lightModel
 			spacing: 10
 			orientation: ListView.Horizontal
+			cacheBuffer: 1000
 
 			property ColorDialog colorDialog: ColorDialog {
 				showAlphaChannel: true
