@@ -174,7 +174,8 @@ QtObject {
 							mediump float d = smoothstep(0.99, 1.0, dot(ref, vec3(0.0, 0.0, 1.0)));
 							gl_FragColor = texture2D(base, qt_TexCoord0);
 							if (d > 0.0) {
-								gl_FragColor = mix(gl_FragColor, color, d * texture2D(lightMap, qt_TexCoord0).a);
+								lowp vec3 scolor = color.rgb * d * texture2D(lightMap, qt_TexCoord0).a;
+								gl_FragColor.rgb = gl_FragColor.rgb * (vec3(1.0) - scolor) + scolor;
 							}
 						}
 					"
